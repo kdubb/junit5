@@ -108,6 +108,18 @@ class DiscoverySelectorResolverTests {
 	}
 
 	@Test
+	@TrackLogRecords
+	void classResolutionForNonexistentClass(LogRecordListener listener) {
+		ClassSelector selector = selectClass("org.example.DoesNotExist");
+
+		resolver.resolveSelectors(request().selectors(selector).build(), engineDescriptor);
+
+		assertTrue(engineDescriptor.getDescendants().isEmpty());
+		assertThat(listener.stream(JavaElementsResolver.class, Level.FINE).map(LogRecord::getMessage)) //
+				.contains("Class 'org.example.DoesNotExist' could not be resolved.");
+	}
+
+	@Test
 	void duplicateClassSelectorOnlyResolvesOnce() {
 		resolver.resolveSelectors(request().selectors( //
 			selectClass(MyTestClass.class), //
@@ -187,6 +199,30 @@ class DiscoverySelectorResolverTests {
 		resolver.resolveSelectors(request, engineDescriptor);
 
 		assertTrue(engineDescriptor.getDescendants().isEmpty());
+	}
+
+	@Test
+	@TrackLogRecords
+	void methodResolutionForNonexistentClass(LogRecordListener listener) {
+		MethodSelector selector = selectMethod("org.example.DoesNotExist", "bogus", "");
+
+		resolver.resolveSelectors(request().selectors(selector).build(), engineDescriptor);
+
+		assertTrue(engineDescriptor.getDescendants().isEmpty());
+		assertThat(listener.stream(JavaElementsResolver.class, Level.FINE).map(LogRecord::getMessage)) //
+				.contains("Class 'org.example.DoesNotExist' could not be resolved.");
+	}
+
+	@Test
+	@TrackLogRecords
+	void methodResolutionForNonexistentMethod(LogRecordListener listener) {
+		MethodSelector selector = selectMethod(MyTestClass.class, "bogus", "");
+
+		resolver.resolveSelectors(request().selectors(selector).build(), engineDescriptor);
+
+		assertTrue(engineDescriptor.getDescendants().isEmpty());
+		assertThat(listener.stream(JavaElementsResolver.class, Level.FINE).map(LogRecord::getMessage)) //
+				.contains("Method 'bogus' in class '" + MyTestClass.class.getName() + "' could not be resolved.");
 	}
 
 	@Test

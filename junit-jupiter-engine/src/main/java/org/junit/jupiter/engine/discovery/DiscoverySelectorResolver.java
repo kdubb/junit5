@@ -65,15 +65,9 @@ public class DiscoverySelectorResolver {
 		request.getSelectorsByType(PackageSelector.class).forEach(selector -> {
 			findAllClassesInPackage(selector.getPackageName(), classFilter).forEach(javaElementsResolver::resolveClass);
 		});
-		request.getSelectorsByType(ClassSelector.class).forEach(selector -> {
-			javaElementsResolver.resolveClass(selector.getJavaClass());
-		});
-		request.getSelectorsByType(MethodSelector.class).forEach(selector -> {
-			javaElementsResolver.resolveMethod(selector.getJavaClass(), selector.getJavaMethod());
-		});
-		request.getSelectorsByType(UniqueIdSelector.class).forEach(selector -> {
-			javaElementsResolver.resolveUniqueId(selector.getUniqueId());
-		});
+		request.getSelectorsByType(ClassSelector.class).forEach(javaElementsResolver::resolveClass);
+		request.getSelectorsByType(MethodSelector.class).forEach(javaElementsResolver::resolveMethod);
+		request.getSelectorsByType(UniqueIdSelector.class).forEach(javaElementsResolver::resolveUniqueId);
 	}
 
 	private void filter(TestDescriptor engineDescriptor, ClassFilter classFilter) {

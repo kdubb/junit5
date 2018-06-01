@@ -38,6 +38,9 @@ import org.junit.platform.commons.util.ReflectionUtils;
 import org.junit.platform.engine.TestDescriptor;
 import org.junit.platform.engine.UniqueId;
 import org.junit.platform.engine.UniqueId.Segment;
+import org.junit.platform.engine.discovery.ClassSelector;
+import org.junit.platform.engine.discovery.MethodSelector;
+import org.junit.platform.engine.discovery.UniqueIdSelector;
 
 /**
  * @since 5.0
@@ -56,6 +59,10 @@ class JavaElementsResolver {
 		this.resolvers = resolvers;
 	}
 
+	void resolveClass(ClassSelector selector) {
+		getJavaClass(selector).ifPresent(this::resolveClass);
+	}
+
 	void resolveClass(Class<?> testClass) {
 		Set<TestDescriptor> resolvedDescriptors = resolveContainerWithParents(testClass);
 		resolvedDescriptors.forEach(this::resolveChildren);
@@ -65,15 +72,19 @@ class JavaElementsResolver {
 		}
 	}
 
-	void resolveMethod(Class<?> testClass, Method testMethod) {
-		Set<TestDescriptor> potentialParents = resolveContainerWithParents(testClass);
-		Set<TestDescriptor> resolvedDescriptors = resolveForAllParents(testMethod, potentialParents);
+	void resolveMethod(MethodSelector selector) {
+		getJavaClass(selector).ifPresent(testClass -> {
+			getJavaMethod(selector).ifPresent(testMethod -> {
+				Set<TestDescriptor> potentialParents = resolveContainerWithParents(testClass);
+				Set<TestDescriptor> resolvedDescriptors = resolveForAllParents(testMethod, potentialParents);
 
-		if (resolvedDescriptors.isEmpty()) {
-			logger.debug(() -> format("Method '%s' could not be resolved.", testMethod.toGenericString()));
-		}
+				if (resolvedDescriptors.isEmpty()) {
+					logger.debug(() -> format("Method '%s' could not be resolved.", testMethod.toGenericString()));
+				}
 
-		logMultipleTestDescriptorsForSingleElement(testMethod, resolvedDescriptors);
+				logMultipleTestDescriptorsForSingleElement(testMethod, resolvedDescriptors);
+			});
+		});
 	}
 
 	private Set<TestDescriptor> resolveContainerWithParents(Class<?> testClass) {
@@ -86,7 +97,40 @@ class JavaElementsResolver {
 		}
 	}
 
-	void resolveUniqueId(UniqueId uniqueId) {
+	private Optional<Class<?>> getJavaClass(ClassSelector selector) {
+		try {
+			return Optional.of(selector.getJavaClass());
+		}
+		catch (Exception ex) {
+			logger.debug(ex, () -> format("Class '%s' could not be resolved.", selector.getClassName()));
+			return Optional.empty();
+		}
+	}
+
+	private Optional<Class<?>> getJavaClass(MethodSelector selector) {
+		try {
+			return Optional.of(selector.getJavaClass());
+		}
+		catch (Exception ex) {
+			logger.debug(ex, () -> format("Class '%s' could not be resolved.", selector.getClassName()));
+			return Optional.empty();
+		}
+	}
+
+	private Optional<Method> getJavaMethod(MethodSelector selector) {
+		try {
+			return Optional.of(selector.getJavaMethod());
+		}
+		catch (Exception ex) {
+			logger.debug(ex, () -> format("Method '%s' in class '%s' could not be resolved.", selector.getMethodName(),
+				selector.getClassName()));
+			return Optional.empty();
+		}
+	}
+
+	void resolveUniqueId(UniqueIdSelector selector) {
+		UniqueId uniqueId = selector.getUniqueId();
+
 		// Ignore Unique IDs from other test engines.
 		if (JupiterTestEngine.ENGINE_ID.equals(uniqueId.getEngineId().orElse(null))) {
 			Deque<TestDescriptor> resolvedDescriptors = resolveAllSegments(uniqueId);
